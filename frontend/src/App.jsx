@@ -21,7 +21,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:7070/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://ai-finance-controller-1-w0ee.onrender.com/api';
 
 export default function App() {
   // Auth state
