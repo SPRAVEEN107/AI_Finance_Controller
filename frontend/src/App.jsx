@@ -1,27 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ShieldCheck,
-  Zap,
-  Bot,
-  RefreshCw,
-  Database,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   Search,
   Send,
-  Sparkles,
-  BarChart3,
-  Layers,
-  ChevronRight,
+  RefreshCw,
+  Database,
   User,
   Lock,
   Mail,
   LogOut,
   KeyRound,
   X,
-  Cpu,
-  ShieldAlert
+  Bot,
+  Layers,
+  BarChart2,
+  ShieldCheck,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:7070/api';
@@ -45,12 +42,12 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // AI Drawer State
+  // Assistant Drawer State
   const [aiOpen, setAiOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([
     {
       sender: 'ai',
-      text: '👋 Hello! I am your **AI Finance Intelligence Assistant**. I monitor multi-source reconciliation data, explain exceptions, and summarize financial batch metrics. How can I help you today?'
+      text: 'Hello. I can assist with reconciliation analysis, explain specific flagged exceptions, or summarize the current batch statistics. How can I help?'
     }
   ]);
   const [chatInput, setChatInput] = useState('');
@@ -58,10 +55,12 @@ export default function App() {
 
   const isAdmin = currentUser?.role === 'ADMIN';
 
-  // Fetch data on load if authenticated or available
+  // Fetch data on load if authenticated
   useEffect(() => {
-    fetchRecords();
-    fetchEvaluation();
+    if (token) {
+      fetchRecords();
+      fetchEvaluation();
+    }
   }, [token]);
 
   const getAuthHeaders = () => {
@@ -87,10 +86,10 @@ export default function App() {
         localStorage.setItem('user_info', JSON.stringify({ name: data.name, email: data.email, role: data.role }));
         setAuthForm({ name: '', email: '', password: '' });
       } else {
-        setAuthError(data.error || 'Invalid login credentials.');
+        setAuthError(data.error || 'Invalid credentials. Please verify your email and password.');
       }
     } catch (err) {
-      setAuthError('Network error connecting to auth server.');
+      setAuthError('Unable to connect to authentication service.');
     }
   };
 
@@ -107,13 +106,13 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        setAuthSuccess(`Registration successful as ${data.role}! Please log in.`);
+        setAuthSuccess(`Account created for ${data.email} (${data.role}). You may now sign in.`);
         setAuthMode('login');
       } else {
         setAuthError(data.error || 'Registration failed.');
       }
     } catch (err) {
-      setAuthError('Network error connecting to auth server.');
+      setAuthError('Unable to reach server for registration.');
     }
   };
 
@@ -153,7 +152,7 @@ export default function App() {
 
   const handleRunReconciliation = async () => {
     if (!isAdmin) {
-      alert('🔒 Permission Denied: Only Admin (Praveen) can execute reconciliation runs.');
+      alert('Action Restricted: Only administrator accounts can execute reconciliation runs.');
       return;
     }
     setLoading(true);
@@ -175,7 +174,7 @@ export default function App() {
 
   const handleGenerateData = async () => {
     if (!isAdmin) {
-      alert('🔒 Permission Denied: Only Admin (Praveen) can generate benchmark datasets.');
+      alert('Action Restricted: Only administrator accounts can generate benchmark data.');
       return;
     }
     setLoading(true);
@@ -216,20 +215,21 @@ export default function App() {
         const data = await res.json();
         setChatMessages([...newMessages, { sender: 'ai', text: data.response }]);
       } else {
-        setChatMessages([...newMessages, { sender: 'ai', text: '⚠️ Unable to connect to AI engine server.' }]);
+        setChatMessages([...newMessages, { sender: 'ai', text: 'Error: Failed to obtain response from assistant service.' }]);
       }
     } catch (err) {
-      setChatMessages([...newMessages, { sender: 'ai', text: '⚠️ Network error connecting to Spring Boot backend.' }]);
+      setChatMessages([...newMessages, { sender: 'ai', text: 'Network Error: Cannot connect to assistant service.' }]);
     } finally {
       setAiLoading(false);
     }
   };
 
-  // Filter records
-  const filteredRecords = records.filter(r => {
+  const filteredRecords = records.filter((r) => {
     const matchesTab = activeTab === 'ALL' || r.status === activeTab;
-    const matchesSearch = searchTerm === '' ||
+    const matchesSearch =
+      searchTerm === '' ||
       r.transactionId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.paymentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.exceptionType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.explanation?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesTab && matchesSearch;
@@ -238,104 +238,131 @@ export default function App() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'MATCHED':
-        return <span className="badge badge-matched"><CheckCircle2 size={12} /> Matched</span>;
+        return (
+          <span className="badge badge-matched">
+            <CheckCircle2 size={13} /> Matched
+          </span>
+        );
       case 'REVIEW':
-        return <span className="badge badge-review"><AlertTriangle size={12} /> Needs Review</span>;
+        return (
+          <span className="badge badge-review">
+            <AlertTriangle size={13} /> Needs Review
+          </span>
+        );
       case 'EXCEPTION':
-        return <span className="badge badge-exception"><XCircle size={12} /> Exception</span>;
+        return (
+          <span className="badge badge-exception">
+            <XCircle size={13} /> Exception
+          </span>
+        );
       default:
         return <span className="badge">{status}</span>;
     }
   };
 
-  // If not logged in, render Authentication Portal
+  // Login / Register Portal
   if (!token) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-        <div className="glass-card" style={{ width: '420px', maxWidth: '100%', padding: '36px' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', padding: '24px' }}>
+        <div className="card" style={{ width: '380px', maxWidth: '100%', padding: '32px' }}>
           
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <div style={{ background: 'linear-gradient(135deg, #0284c7, #7c3aed)', width: '56px', height: '56px', borderRadius: '16px', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Lock size={28} color="#ffffff" />
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '6px', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+              <Lock size={18} color="#ffffff" />
             </div>
-            <h2 className="gradient-text" style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 6px' }}>
-              AI Finance Controller
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              {authMode === 'login' ? 'JWT Signed User Authentication' : 'Register New User Account'}
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a', margin: '0 0 4px' }}>
+              Finance Controller
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '0.85rem', margin: 0 }}>
+              {authMode === 'login' ? 'Sign in to access reconciliation workspace' : 'Create an analyst account'}
             </p>
           </div>
 
           {authError && (
-            <div style={{ background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', color: '#fb7185', padding: '10px 14px', borderRadius: '10px', fontSize: '0.85rem', marginBottom: '16px' }}>
+            <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '10px 12px', borderRadius: '6px', fontSize: '0.8rem', marginBottom: '16px' }}>
               {authError}
             </div>
           )}
 
           {authSuccess && (
-            <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', padding: '10px 14px', borderRadius: '10px', fontSize: '0.85rem', marginBottom: '16px' }}>
+            <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', padding: '10px 12px', borderRadius: '6px', fontSize: '0.8rem', marginBottom: '16px' }}>
               {authSuccess}
             </div>
           )}
 
-          <form onSubmit={authMode === 'login' ? handleLogin : handleRegister}>
+          <form onSubmit={authMode === 'login' ? handleLogin : handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {authMode === 'register' && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>Full Name</label>
-                <div style={{ position: 'relative' }}>
-                  <User size={16} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter your name (e.g. Praveen)"
-                    value={authForm.name}
-                    onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none' }}
-                  />
-                </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#334155', marginBottom: '4px' }}>
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="form-input"
+                  placeholder="e.g. Praveen"
+                  value={authForm.name}
+                  onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                />
               </div>
             )}
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>Email Address</label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={16} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input
-                  type="email"
-                  required
-                  placeholder="user@finance.com"
-                  value={authForm.email}
-                  onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none' }}
-                />
-              </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#334155', marginBottom: '4px' }}>
+                Email Address
+              </label>
+              <input
+                type="email"
+                required
+                className="form-input"
+                placeholder="name@company.com"
+                value={authForm.email}
+                onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+              />
             </div>
 
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>Password</label>
-              <div style={{ position: 'relative' }}>
-                <KeyRound size={16} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={authForm.password}
-                  onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none' }}
-                />
-              </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#334155', marginBottom: '4px' }}>
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                className="form-input"
+                placeholder="••••••••"
+                value={authForm.password}
+                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+              />
             </div>
 
-            <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
-              {authMode === 'login' ? 'Sign In & Authenticate JWT' : 'Register Account'}
+            <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '6px' }}>
+              {authMode === 'login' ? 'Sign In' : 'Create Account'}
             </button>
           </form>
 
-          <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', textAlign: 'center', fontSize: '0.8rem', color: '#64748b' }}>
             {authMode === 'login' ? (
-              <span>Don't have an account? <a href="#register" onClick={(e) => { e.preventDefault(); setAuthMode('register'); }} style={{ color: 'var(--accent-cyan)', fontWeight: 600, textDecoration: 'none' }}>Register here</a></span>
+              <span>
+                Need an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('register'); setAuthError(''); }}
+                  style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 500, cursor: 'pointer', padding: 0 }}
+                >
+                  Register
+                </button>
+              </span>
             ) : (
-              <span>Already registered? <a href="#login" onClick={(e) => { e.preventDefault(); setAuthMode('login'); }} style={{ color: 'var(--accent-cyan)', fontWeight: 600, textDecoration: 'none' }}>Sign In</a></span>
+              <span>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('login'); setAuthError(''); }}
+                  style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 500, cursor: 'pointer', padding: 0 }}
+                >
+                  Sign In
+                </button>
+              </span>
             )}
           </div>
 
@@ -344,316 +371,346 @@ export default function App() {
     );
   }
 
-  // Render Main Dashboard when Authenticated
+  // Authenticated Main View
   return (
-    <div style={{ padding: '24px 32px', maxWidth: '1440px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
       
-      {/* HEADER NAVBAR */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      {/* Top Navbar */}
+      <header style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ background: 'linear-gradient(135deg, #0284c7, #7c3aed)', padding: '12px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Cpu size={28} color="#ffffff" />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h1 className="gradient-text" style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
-                AI Finance Controller
-              </h1>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>
-                <span className="pulse-dot"></span> {isAdmin ? 'ADMIN CONTROL' : 'USER ANALYST'}
-              </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '28px', height: '28px', backgroundColor: '#0f172a', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: '#ffffff', fontWeight: 700, fontSize: '0.85rem' }}>FC</span>
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '2px' }}>
-              Automated multi-source financial reconciliation & LLM explanation platform
-            </p>
-          </div>
-        </div>
-
-        {/* Action Controls & User Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-secondary)', padding: '6px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
-            <User size={16} color={isAdmin ? '#c084fc' : 'var(--accent-cyan)'} />
-            <span style={{ fontWeight: 600 }}>{currentUser?.name || currentUser?.email}</span>
-            <span style={{ background: isAdmin ? 'rgba(168, 85, 247, 0.2)' : 'rgba(59, 130, 246, 0.15)', color: isAdmin ? '#c084fc' : '#60a5fa', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800 }}>
-              {currentUser?.role}
+            <span style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a' }}>
+              Finance Controller
             </span>
           </div>
 
-          {/* ADMIN ONLY CONTROLS */}
+          <span style={{ height: '18px', width: '1px', backgroundColor: '#e2e8f0' }} />
+
+          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="status-indicator"></span> System Operational
+          </span>
+        </div>
+
+        {/* User Info & Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {isAdmin ? (
             <>
-              <button onClick={handleGenerateData} disabled={loading} className="btn-secondary">
-                <Database size={16} />
-                Generate Dataset
+              <button onClick={handleGenerateData} disabled={loading} className="btn-secondary" title="Populate synthetic transaction & payment dataset">
+                <Database size={15} />
+                Generate Sample Data
               </button>
-              <button onClick={handleRunReconciliation} disabled={loading} className="btn-primary">
-                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              <button onClick={handleRunReconciliation} disabled={loading} className="btn-primary" title="Execute multi-source matching engine">
+                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
                 Run Reconciliation
               </button>
             </>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '6px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600 }}>
-              <ShieldAlert size={14} /> Read-Only Mode (User)
-            </div>
+            <span style={{ fontSize: '0.75rem', color: '#64748b', backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>
+              Read-Only Analyst View
+            </span>
           )}
 
-          <button onClick={() => setAiOpen(true)} className="btn-ai">
-            <Bot size={18} />
-            AI Assistant
+          <button onClick={() => setAiOpen(true)} className="btn-assistant">
+            <Bot size={15} />
+            Reconciliation Assistant
           </button>
 
-          <button onClick={handleLogout} className="btn-secondary" title="Logout" style={{ padding: '10px 14px' }}>
-            <LogOut size={16} color="#fb7185" />
+          <span style={{ height: '24px', width: '1px', backgroundColor: '#e2e8f0', margin: '0 4px' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#334155', padding: '4px 8px' }}>
+            <User size={15} color="#64748b" />
+            <span style={{ fontWeight: 500 }}>{currentUser?.name || currentUser?.email}</span>
+            <span style={{ fontSize: '0.7rem', color: '#64748b', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+              {currentUser?.role}
+            </span>
+          </div>
+
+          <button onClick={handleLogout} className="btn-secondary" title="Sign out" style={{ padding: '8px 10px' }}>
+            <LogOut size={15} />
           </button>
         </div>
       </header>
 
-      {/* KPI METRIC CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+      {/* Main Workspace */}
+      <main style={{ padding: '24px', maxWidth: '1400px', width: '100%', margin: '0 auto', flex: 1 }}>
         
-        {/* Total Processed */}
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Records</span>
-            <Layers size={18} color="var(--accent-cyan)" />
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800 }}>{records.length}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>Multi-source batch feed</div>
-        </div>
-
-        {/* Match Rate */}
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Match Rate</span>
-            <ShieldCheck size={18} color="var(--accent-emerald)" />
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#34d399' }}>
-            {evaluation ? `${evaluation.matchRate}%` : '0.0%'}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-            {evaluation ? `${evaluation.matchedCount} matched / ${evaluation.totalRecords} total` : 'Awaiting execution'}
-          </div>
-        </div>
-
-        {/* Precision */}
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Engine Precision</span>
-            <BarChart3 size={18} color="var(--accent-purple)" />
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#c084fc' }}>
-            {evaluation ? `${evaluation.precisionMetric}%` : '100%'}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>Ground truth benchmark</div>
-        </div>
-
-        {/* F1 Score */}
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>F1 Accuracy Score</span>
-            <Sparkles size={18} color="var(--accent-blue)" />
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#60a5fa' }}>
-            {evaluation ? `${evaluation.f1Score}%` : '100%'}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>Harmonic mean precision/recall</div>
-        </div>
-
-        {/* Throughput */}
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Throughput</span>
-            <Zap size={18} color="var(--accent-amber)" />
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#fbbf24' }}>
-            {evaluation ? `${evaluation.throughput}` : '0'} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>rec/s</span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-            {evaluation ? `Execution time: ${evaluation.processingTimeMs} ms` : 'Latency tracking'}
-          </div>
-        </div>
-
-      </div>
-
-      {/* MAIN CONTENT SECTION */}
-      <div className="glass-card" style={{ padding: '24px', marginBottom: '32px' }}>
-        
-        {/* Table Controls Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+        {/* KPI Metric Summary */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
           
-          {/* Status Filter Tabs */}
-          <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-            {['ALL', 'MATCHED', 'REVIEW', 'EXCEPTION'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => { setActiveTab(tab); fetchRecords(tab); }}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  background: activeTab === tab ? 'var(--bg-card)' : 'transparent',
-                  color: activeTab === tab ? 'var(--text-main)' : 'var(--text-muted)',
-                  boxShadow: activeTab === tab ? '0 2px 8px rgba(0,0,0,0.3)' : 'none'
-                }}
-              >
-                {tab === 'ALL' && `All Records (${records.length})`}
-                {tab === 'MATCHED' && `✅ Matched (${records.filter(r => r.status === 'MATCHED').length})`}
-                {tab === 'REVIEW' && `⚠️ Review (${records.filter(r => r.status === 'REVIEW').length})`}
-                {tab === 'EXCEPTION' && `❌ Exceptions (${records.filter(r => r.status === 'EXCEPTION').length})`}
-              </button>
-            ))}
+          <div className="card" style={{ padding: '16px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.8rem', fontWeight: 500, marginBottom: '8px' }}>
+              <span>Total Transactions</span>
+              <Layers size={16} />
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 600, color: '#0f172a' }}>
+              {records.length}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
+              Loaded from database
+            </div>
           </div>
 
-          {/* Search Box */}
-          <div style={{ position: 'relative', width: '320px' }}>
-            <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              placeholder="Search Transaction ID, customer..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px 10px 38px',
-                borderRadius: '12px',
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-main)',
-                fontSize: '0.875rem',
-                outline: 'none'
-              }}
-            />
+          <div className="card" style={{ padding: '16px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.8rem', fontWeight: 500, marginBottom: '8px' }}>
+              <span>Match Rate</span>
+              <ShieldCheck size={16} />
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 600, color: evaluation?.matchRate >= 80 ? '#059669' : '#0f172a' }}>
+              {evaluation ? `${evaluation.matchRate}%` : '—'}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
+              {evaluation ? `${evaluation.matchedCount} of ${evaluation.totalRecords} matched` : 'Pending execution'}
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '16px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.8rem', fontWeight: 500, marginBottom: '8px' }}>
+              <span>Precision</span>
+              <BarChart2 size={16} />
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 600, color: '#0f172a' }}>
+              {evaluation ? `${evaluation.precisionMetric}%` : '—'}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
+              Against ground truth
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '16px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.8rem', fontWeight: 500, marginBottom: '8px' }}>
+              <span>F1 Score</span>
+              <BarChart2 size={16} />
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 600, color: '#0f172a' }}>
+              {evaluation ? `${evaluation.f1Score}%` : '—'}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
+              Harmonic accuracy metric
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '16px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.8rem', fontWeight: 500, marginBottom: '8px' }}>
+              <span>Throughput</span>
+              <Zap size={16} />
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 600, color: '#0f172a' }}>
+              {evaluation ? `${evaluation.throughput}` : '0'}{' '}
+              <span style={{ fontSize: '0.8rem', fontWeight: 400, color: '#64748b' }}>rec/s</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
+              {evaluation ? `Duration: ${evaluation.processingTimeMs} ms` : 'Batch latency'}
+            </div>
           </div>
 
         </div>
 
-        {/* Transactions Table */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-                <th style={{ padding: '12px 16px' }}>Transaction ID</th>
-                <th style={{ padding: '12px 16px' }}>Payment Ref</th>
-                <th style={{ padding: '12px 16px' }}>Match Score</th>
-                <th style={{ padding: '12px 16px' }}>Status</th>
-                <th style={{ padding: '12px 16px' }}>Category</th>
-                <th style={{ padding: '12px 16px' }}>Audit Breakdown</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecords.length === 0 ? (
-                <tr>
-                  <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    No financial records found matching criteria.
-                  </td>
+        {/* Data Table Section */}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          
+          {/* Controls Bar */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            
+            {/* Filter Tabs */}
+            <div style={{ display: 'inline-flex', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '6px', gap: '2px' }}>
+              {[
+                { id: 'ALL', label: `All (${records.length})` },
+                { id: 'MATCHED', label: `Matched (${records.filter(r => r.status === 'MATCHED').length})` },
+                { id: 'REVIEW', label: `Review (${records.filter(r => r.status === 'REVIEW').length})` },
+                { id: 'EXCEPTION', label: `Exceptions (${records.filter(r => r.status === 'EXCEPTION').length})` }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => { setActiveTab(tab.id); fetchRecords(tab.id); }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    backgroundColor: activeTab === tab.id ? '#ffffff' : 'transparent',
+                    color: activeTab === tab.id ? '#0f172a' : '#64748b',
+                    boxShadow: activeTab === tab.id ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search Input */}
+            <div style={{ position: 'relative', width: '280px' }}>
+              <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                type="text"
+                placeholder="Search transaction, ref, or note..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="form-input"
+                style={{ paddingLeft: '32px', fontSize: '0.8rem' }}
+              />
+            </div>
+
+          </div>
+
+          {/* Table */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', fontWeight: 600 }}>
+                  <th style={{ padding: '10px 16px' }}>Transaction ID</th>
+                  <th style={{ padding: '10px 16px' }}>Payment Ref</th>
+                  <th style={{ padding: '10px 16px' }}>Match Score</th>
+                  <th style={{ padding: '10px 16px' }}>Status</th>
+                  <th style={{ padding: '10px 16px' }}>Category</th>
+                  <th style={{ padding: '10px 16px' }}>Audit Note</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'right' }}>Action</th>
                 </tr>
-              ) : (
-                filteredRecords.map((rec) => (
-                  <tr 
-                    key={rec.id} 
-                    style={{ borderBottom: '1px solid rgba(42, 54, 79, 0.4)', transition: 'background 0.15s ease' }}
-                    className="hover:bg-slate-800/40"
-                  >
-                    <td style={{ padding: '14px 16px', fontWeight: 600 }} className="font-mono">
-                      {rec.transactionId}
-                    </td>
-                    <td style={{ padding: '14px 16px', color: 'var(--text-muted)' }} className="font-mono">
-                      {rec.paymentId || '—'}
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ flex: 1, height: '6px', background: 'var(--bg-secondary)', borderRadius: '3px', overflow: 'hidden', minWidth: '80px' }}>
-                          <div 
-                            style={{ 
-                              height: '100%', 
-                              width: `${rec.matchScore}%`, 
-                              background: rec.matchScore >= 90 ? '#10b981' : rec.matchScore >= 70 ? '#f59e0b' : '#f43f5e',
-                              borderRadius: '3px'
-                            }} 
-                          />
-                        </div>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }} className="font-mono">
-                          {rec.matchScore?.toFixed(0)}%
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      {getStatusBadge(rec.status)}
-                    </td>
-                    <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                      {rec.exceptionType}
-                    </td>
-                    <td style={{ padding: '14px 16px', color: 'var(--text-muted)', maxWidth: '320px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {rec.explanation}
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      <button 
-                        onClick={() => { setAiOpen(true); handleSendChat(`Why is ${rec.transactionId} flagged as ${rec.status}?`); }}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 600 }}
-                      >
-                        Ask AI <ChevronRight size={14} />
-                      </button>
+              </thead>
+              <tbody>
+                {filteredRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{ padding: '36px', textAlign: 'center', color: '#94a3b8' }}>
+                      No matching records found.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredRecords.map((rec) => (
+                    <tr
+                      key={rec.id}
+                      style={{ borderBottom: '1px solid #f1f5f9' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                    >
+                      <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a' }} className="font-mono">
+                        {rec.transactionId}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#64748b' }} className="font-mono">
+                        {rec.paymentId || '—'}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ width: '60px', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${rec.matchScore}%`,
+                                backgroundColor: rec.matchScore >= 90 ? '#10b981' : rec.matchScore >= 70 ? '#f59e0b' : '#ef4444'
+                              }}
+                            />
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 500 }} className="font-mono">
+                            {rec.matchScore?.toFixed(0)}%
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {getStatusBadge(rec.status)}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#475569', fontSize: '0.8rem' }}>
+                        {rec.exceptionType}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#64748b', fontSize: '0.8rem', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {rec.explanation}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <button
+                          onClick={() => {
+                            setAiOpen(true);
+                            handleSendChat(`Provide audit details and reasoning for transaction ${rec.transactionId} (${rec.status})`);
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#2563eb',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}
+                        >
+                          Analyze <ArrowRight size={12} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
         </div>
 
-      </div>
+      </main>
 
-      {/* AI ASSISTANT DRAWER */}
+      {/* Assistant Side Drawer */}
       {aiOpen && (
-        <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '450px', maxWidth: '100vw', background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-color)', boxShadow: '-10px 0 40px rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '420px', maxWidth: '100vw', backgroundColor: '#ffffff', borderLeft: '1px solid #e2e8f0', boxShadow: '-4px 0 24px rgba(0,0,0,0.08)', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>
           
           {/* Drawer Header */}
-          <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Bot size={22} color="var(--accent-purple)" />
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Bot size={18} color="#2563eb" />
               <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>AI Finance Intelligence</h3>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Powered by Verified MySQL Database Context</span>
+                <h2 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0f172a', margin: 0 }}>
+                  Reconciliation Assistant
+                </h2>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  Contextual analysis & queries
+                </span>
               </div>
             </div>
-            <button onClick={() => setAiOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-              <X size={20} />
+            <button
+              onClick={() => setAiOpen(false)}
+              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
+            >
+              <X size={18} />
             </button>
           </div>
 
-          {/* Prompt Chips */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '8px', overflowX: 'auto', background: 'var(--bg-primary)' }}>
-            <button onClick={() => handleSendChat('Summarize today\'s reconciliation results')} style={{ padding: '6px 12px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              📊 Batch Summary
+          {/* Quick Query Suggestions */}
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '6px', overflowX: 'auto', backgroundColor: '#f8fafc' }}>
+            <button
+              onClick={() => handleSendChat('Summarize reconciliation batch results')}
+              style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              Batch Summary
             </button>
-            <button onClick={() => handleSendChat('What are the main exception types?')} style={{ padding: '6px 12px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              ⚠️ Exception Types
+            <button
+              onClick={() => handleSendChat('List the main exception types and counts')}
+              style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              Exception Breakdown
             </button>
-            <button onClick={() => handleSendChat('Show system accuracy and throughput metrics')} style={{ padding: '6px 12px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              🎯 Benchmarks
+            <button
+              onClick={() => handleSendChat('What are the system precision and throughput metrics?')}
+              style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              Metrics
             </button>
           </div>
 
-          {/* Chat Messages */}
-          <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {chatMessages.map((msg, i) => (
-              <div 
-                key={i} 
-                style={{ 
+          {/* Messages */}
+          <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {chatMessages.map((msg, idx) => (
+              <div
+                key={idx}
+                style={{
                   alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
                   maxWidth: '85%',
-                  background: msg.sender === 'user' ? 'linear-gradient(135deg, #0284c7, #2563eb)' : 'var(--bg-card)',
-                  color: '#ffffff',
-                  padding: '12px 16px',
-                  borderRadius: msg.sender === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                  border: msg.sender === 'user' ? 'none' : '1px solid var(--border-color)',
-                  fontSize: '0.875rem',
-                  lineHeight: '1.6',
+                  backgroundColor: msg.sender === 'user' ? '#0f172a' : '#f8fafc',
+                  color: msg.sender === 'user' ? '#ffffff' : '#0f172a',
+                  border: msg.sender === 'user' ? 'none' : '1px solid #e2e8f0',
+                  padding: '10px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.5',
                   whiteSpace: 'pre-wrap'
                 }}
               >
@@ -661,34 +718,25 @@ export default function App() {
               </div>
             ))}
             {aiLoading && (
-              <div style={{ alignSelf: 'flex-start', background: 'var(--bg-card)', padding: '12px 16px', borderRadius: '16px', border: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Sparkles size={16} className="animate-spin" color="var(--accent-purple)" />
-                AI is querying database context...
+              <div style={{ alignSelf: 'flex-start', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '8px 12px', borderRadius: '6px', fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <RefreshCw size={13} className="animate-spin" /> Fetching analysis...
               </div>
             )}
           </div>
 
-          {/* Input Box */}
-          <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
-            <form onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} style={{ display: 'flex', gap: '10px' }}>
+          {/* Input Bar */}
+          <div style={{ padding: '14px 16px', borderTop: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
+            <form onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="text"
-                placeholder="Ask a finance or exception question..."
+                placeholder="Ask about a transaction or metric..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: '10px 14px',
-                  borderRadius: '12px',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-main)',
-                  fontSize: '0.875rem',
-                  outline: 'none'
-                }}
+                className="form-input"
+                style={{ fontSize: '0.85rem' }}
               />
-              <button type="submit" disabled={aiLoading} className="btn-ai" style={{ padding: '10px 16px' }}>
-                <Send size={16} />
+              <button type="submit" disabled={aiLoading} className="btn-primary" style={{ padding: '8px 12px' }}>
+                <Send size={14} />
               </button>
             </form>
           </div>
